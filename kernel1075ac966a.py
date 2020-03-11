@@ -47,11 +47,7 @@ y_train_consonant = pd.get_dummies(train_df['consonant_diacritic']).values
 del train
 del train_df
 del class_map
-
-print("Training images shape:", x_train.shape)
-print("Traning label grapheme shape:", y_train_grapheme.shape)
-print("Training label vowel shape:", y_train_vowel.shape)
-print("Training label consonant shape:", y_train_consonant.shape)
+del sample_submission
 
 batch_size = 32
 epochs = 50
@@ -165,7 +161,7 @@ lr_reducer_consonant = ReduceLROnPlateau(monitor='output_consonant_accuracy',
                                          min_lr=0.5e-6)
 
 callbacks = [lr_reducer_grapheme, lr_reducer_vowel, lr_reducer_consonant]
-
+'''
 print('Using real-time data augmentation.')
 # This will do preprocessing and realtime data augmentation:
 datagen = ImageDataGenerator(
@@ -203,6 +199,13 @@ history = model.fit_generator(datagen.flow(x=x_train,
                               epochs=epochs, verbose=1, 
                               steps_per_epoch = x_train.shape[0]//batch_size, 
                               callbacks=callbacks)
+'''
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+history = model.fit(x_train, {'output_grapheme': y_train_grapheme, 
+                              'output_consonant': y_train_consonant, 
+                              'output_vowel': y_train_vowel}, batch_size=batch_size, 
+                    epochs=epochs, verbose=1, callbacks=callbacks)
 
 del x_train
 del y_train_grapheme
@@ -210,9 +213,4 @@ del y_train_vowel
 del y_train_consonant
 gc.collect()
 
-for i in range(4):
-    test_image_data = pd.read_parquet('data/test_image_data_{i}.parquet', engine='pyarrow')
-    test_df = pd.merge(test_image_data, test, on='image_id').drop(['image_id'], axis=1)
-
-x_test = resize(test_df)/255.0
-x_test = x_test.values.reshape(-1, SIZE, SIZE, CHANNELS)
+model.save('bengali-cv19-model.h5')
